@@ -1,2 +1,22 @@
-falkordb
-pytest
+# Database
+falkordb>=1.7.0
+
+# Data Models & Schemas
+pydantic>=2.7.0
+
+# API & Server
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+httpx>=0.27.0
+
+# Agent Orchestration
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# Synthetic Data & Graphs
+faker>=25.0.0
+networkx>=3.2.0
+
+# Environment & Testing
+python-dotenv>=1.0.1
+pytest>=8.2.0

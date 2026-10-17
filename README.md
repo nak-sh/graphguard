@@ -29,12 +29,12 @@ The graph models money transfers as direct, attributed edges to optimize path tr
 
 ```text
 (:Alert) -[:ABOUT]-> (:Account) -[:USES_DEVICE]-> (:Device)
-                          |     -[:USED_IP]-> (:IPAddress)
-                          |
+                         |      -[:USED_IP]-> (:IPAddress)
+                         |
              [:SENT_MONEY {amount, ts}]
-                          |
-                          v
-                      (:Account)
+                         |
+                         v
+                    (:Account)
 ```
 
 ### Nodes
@@ -74,22 +74,23 @@ MATCH (a:Account {id: $entity_id})-[:USES_DEVICE]->(d:Device)<-[:USES_DEVICE]-(o
 WHERE other.id <> a.id
 RETURN d.id AS device_id, collect(DISTINCT other.id) AS connected_accounts
 ```
-*Detects account clusters operating from the same hardware.*
+*Detects account clusters operating from the same hardware while pruning high-degree hubs.*
 
-### C. Directed Money Path Tracing
+### C. Bounded Neighborhood Traversal
 ```cypher
-MATCH p = (a:Account {id: $entity_id})-[:SENT_MONEY*1..4]->(other:Account)
+MATCH (a:Account {id: $entity_id})
+OPTIONAL MATCH p = (a)-[r*1..$max_hops]-(m)
 RETURN p
 LIMIT $limit
 ```
-*Traces downstream fund dispersal across multiple intermediate accounts.*
+*Extracts local subgraphs up to configurable hops for UI visualization and contextual analysis.*
 
 ---
 
 ## 5. Progress to Date
 
 - [x] **Phase 1: Environment & Cypher Spike**
-- [ ] **Phase 2: Deterministic Tools & Scorer**
+- [x] **Phase 2: Deterministic Tools & Scorer**
 - [ ] **Phase 3: LangGraph Agent & Policy Engine**
 - [ ] **Phase 4: Action Engine, Verification & Rollback**
 - [ ] **Phase 5: Web UI & Subgraph Visualizer**
@@ -105,6 +106,19 @@ LIMIT $limit
   * Confirmed that `A-104` detects the 5-node cycle and returns 4 connected accounts.
   * Confirmed that `D-201` ignores 2-hop bilateral transfers (0 cycles detected), verifying restraint.
   * Verified 13 total nodes and 18 relationships in the FalkorDB Browser.
+
+### Completed in Phase 2
+* **Pydantic Tool Contracts (`apps/graph_tools/models.py`):** Established strict data contracts (`SubgraphResult`, `SharedInfraResult`, `CycleResult`, `EvidenceItem`) to decouple database results from consumption layers.
+* **Deterministic Tool Layer (`apps/graph_tools/tools.py`):**
+  * `get_neighborhood`: Parameterized bounded traversal returning typed node and edge models.
+  * `find_shared_infrastructure`: Device/IP hardware grouping with hub-node cutoffs to suppress noisy false positives.
+  * `detect_transfer_cycles`: Parameterized multi-hop cycle traversal with bidirectional timestamp validation to handle engine traversal unrolling.
+* **Weighted Scoring Engine (`apps/policy/scorer.py`):**
+  * Implemented versioned risk weights: Time-ordered cycle (`+40`), Shared device cluster (`+25`), Household mitigator (`-15`).
+  * Policy tier thresholds: `AUTO_HOLD` ($\ge 70$), `MANUAL_REVIEW` ($40$–$69$), `NO_ACTION` ($< 40$).
+* **Phase 2 Verification (`tests/test_phase2.py`):**
+  * `A-104` flagged as high risk (Score: 65, Tier: `MANUAL_REVIEW`) on combined cycle and device cluster signals.
+  * `D-201` safely classified as benign (Score: 0, Tier: `NO_ACTION`) via the household decoy mitigator rule.
 
 ---
 
@@ -145,18 +159,22 @@ LIMIT $limit
    python data/generate_demo.py
    ```
 
-5. **Run the verification spike:**
+5. **Run test verifications:**
    ```bash
+   # Phase 1 verification
    python tests/test_cypher_spike.py
+
+   # Phase 2 verification
+   python -m tests.test_phase2
    ```
 
 ---
 
-## 7. Next Milestones (Phase 2 & 3)
+## 7. Next Milestones (Phase 3 & 4)
 
-* **Pydantic Contracts (`apps/graph_tools/models.py`):** Define strict schemas for graph tool inputs, outputs, and evidence items.
-* **Deterministic Risk Scorer (`apps/policy/scorer.py`):** Implement weighted scoring (Cycle: +40, Shared Device: +25, Decoy Mitigators: -15 to -20).
 * **LangGraph Agent Workflow (`apps/agent/graph.py`):** State machine managing tool execution, dry-run diffing, and offline fallback execution.
+* **Action Engine & Rollback (`apps/actions/engine.py`):** Safe execution against mock payment gateways with idempotency keys and state rollback mechanism.
+* **Strict Grounding Verifier:** Automated verification preventing hallucinated entities or unsupported containment actions.
 
 ---
 

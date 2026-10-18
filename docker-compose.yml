@@ -63,6 +63,8 @@ services:
   web:
     build:
       context: ./web
+      args:
+        GRAPHGUARD_API_URL: http://api:8000
     container_name: graphguard-web
     environment:
       HOSTNAME: "0.0.0.0"

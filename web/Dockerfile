@@ -5,6 +5,8 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-f
 
 FROM node:20.17.0-alpine3.20 AS builder
 WORKDIR /app
+ARG GRAPHGUARD_API_URL=http://localhost:8000
+ENV GRAPHGUARD_API_URL=$GRAPHGUARD_API_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

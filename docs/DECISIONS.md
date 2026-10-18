@@ -66,9 +66,27 @@ This log records implementation choices made while bringing the supplied prototy
 
 ## D-011 — Frontend replacement is a real application
 
-**Decision:** The Streamlit screen is replaced with a Next.js App Router application. It consumes typed API contracts, uses SSE for progress, and keeps graph rendering and action controls connected to the real backend rather than mock-only UI state.
+**Decision:** The legacy prototype screen is replaced with a Next.js App Router application. It consumes typed API contracts, uses SSE for progress, and keeps graph rendering and action controls connected to the real backend rather than mock-only UI state.
 
 **Reason:** The requested product experience is an interactive investigation workspace, not a decorated form.
+
+## D-013 — Expose the active policy as a read-only UI contract
+
+**Decision:** Add `GET /api/policy/current`, returning the loaded versioned policy without allowing the frontend to mutate it. The policy page uses this response to initialize sandbox controls instead of duplicating weights and thresholds in TypeScript.
+
+**Reason:** The frontend needs honest, data-driven policy controls. A read-only endpoint avoids silently drifting from `policy.yaml` while preserving the backend as the source of truth.
+
+## D-014 — Normalize persisted evidence at the policy API boundary
+
+**Decision:** `/api/policy/sandbox` strips FalkorDB persistence metadata (`created_at` and `data_json`) before validating evidence against the strict shared `EvidenceItem` contract.
+
+**Reason:** The policy sandbox must score the same cached evidence that was persisted by an incident. Storage metadata is not part of the scoring contract and previously caused valid cached evidence to be rejected as extra fields.
+
+## D-015 — Bake the Compose API origin into the Next.js rewrite
+
+**Decision:** The web image accepts a pinned `GRAPHGUARD_API_URL` build argument, and Compose passes `http://api:8000`. Local development retains the localhost default.
+
+**Reason:** Next.js rewrites are evaluated during the production build. A runtime-only container environment left the shipped web image proxying to its own localhost instead of the API service.
 
 ## D-012 — Optional features are sequenced behind the safe core
 

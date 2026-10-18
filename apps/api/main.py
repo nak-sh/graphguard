@@ -262,6 +262,12 @@ def set_autonomy(req: AutonomyRequest) -> dict[str, str]:
     return {"mode": _autonomy_mode}
 
 
+@app.get("/api/policy/current")
+def current_policy() -> dict[str, Any]:
+    """Expose the versioned policy used by the deterministic scorer to the UI."""
+    return load_policy().model_dump()
+
+
 @app.post("/api/policy/sandbox")
 def policy_sandbox(req: PolicySandboxRequest) -> dict[str, Any]:
     tools = services()[0]
@@ -282,7 +288,10 @@ def policy_sandbox(req: PolicySandboxRequest) -> dict[str, Any]:
         evidence = tools.get_incident_evidence(str(incident["id"]))
         try:
             from apps.graph_tools.models import EvidenceBundle, EvidenceItem
-            result = score_evidence(str(incident.get("entity_id")), EvidenceBundle(entity_id=str(incident.get("entity_id")), items=[EvidenceItem.model_validate(item) for item in evidence], policy_version=base.version), policy=policy, policy_version=policy.version)
+            normalized_evidence = []
+            for item in evidence:
+                normalized_evidence.append({key: item.get(key) for key in ("id", "kind", "query_name", "summary", "data", "flagged", "result_hash")})
+            result = score_evidence(str(incident.get("entity_id")), EvidenceBundle(entity_id=str(incident.get("entity_id")), items=[EvidenceItem.model_validate(item) for item in normalized_evidence], policy_version=base.version), policy=policy, policy_version=policy.version)
             rows.append({"incident_id": incident.get("id"), "entity_id": incident.get("entity_id"), "original_tier": incident.get("tier"), "sandbox_score": result.score, "sandbox_tier": result.tier, "regression": str(incident.get("tier")) != result.tier, "decoy_regression": str(incident.get("entity_id", "")).startswith("D-") and result.tier != "NO_ACTION"})
         except Exception as exc:
             rows.append({"incident_id": incident.get("id"), "error": str(exc)})

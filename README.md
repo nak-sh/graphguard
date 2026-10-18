@@ -17,7 +17,7 @@ It investigates suspicious accounts through FalkorDB-backed neighborhoods, share
 - Audit events form a SHA-256 chain. `GET /api/audit/verify` detects tampering; the tamper control is disabled unless `GRAPHGUARD_DEV_CONTROLS=1`.
 - The offline deterministic playbook completes the demo without an LLM key. Anthropic and OpenAI-compatible structured tool selection are optional adapters.
 - `mcp_server/server.py` exposes the same read-only tools and dry-run contract; execution requires an explicit approval token. The MCP SDK is an optional separate process so its major-version transport dependencies cannot silently change the FastAPI stack.
-- The Next.js web app provides the mission-control shell and dedicated routes for investigation, replay, containment, red-team, policy, audit, and benchmark views.
+- The Next.js web app provides a shared security-operations shell with live health/autonomy state, API-offline empty states, a Cytoscape/fcose neighborhood graph, SSE investigation progress, evidence/score/why/actions/copilot tabs, approval-gated dry runs, rollback, gateway logs, audit verification, command palette, and dedicated replay, containment, red-team, policy, audit, and benchmark views.
 - `make eval` and `make benchmark` write machine-readable result artifacts; this README does not contain hand-entered latency or accuracy figures.
 
 ## Architecture
@@ -159,7 +159,7 @@ The frontend defaults to the `/backend` rewrite in `web/next.config.mjs`; set `N
 - The LLM is optional and non-authoritative. Provider failure falls back to the deterministic read-only playbook.
 - Collateral volume and legitimate-activity values are synthetic estimates, not operational risk measurements.
 - The benchmark measures local client round trips and is not a production capacity guarantee.
-- The current web graph canvas has a bounded demo view; larger neighborhoods must remain capped/summarized by the backend.
+- The web graph canvas renders only the API neighborhood response, caps the client renderer at 300 nodes, and reports hidden-node counts when the backend returns a larger result. It never substitutes a demo graph when the API is unavailable.
 
 ## AI-assistant disclosure
 

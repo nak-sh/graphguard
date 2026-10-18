@@ -163,7 +163,8 @@ The frontend defaults to the `/backend` rewrite in `web/next.config.mjs`; set `N
 
 ## AI-assistant disclosure
 
-GraphGuard was built with significant AI assistance, directed and reviewed by me.
+GraphGuard was built with AI assistance, directed, written in significant part, and
+reviewed by me.
 
 **Tools used:** Claude (Anthropic), ChatGPT / an OpenAI coding agent, and Gemini (Google).
 
@@ -172,21 +173,28 @@ GraphGuard was built with significant AI assistance, directed and reviewed by me
   drafted the architecture/design document, reviewed code for defects, wrote
   implementation prompts, helped troubleshoot Docker and environment issues,
   and helped draft the README and submission text.
-- ChatGPT / coding agent: generated much of the implementation code from the
-  design document and my prompts (backend, agent workflow, graph tools,
-  frontend).
-- Gemini: helped develop the initial version of the project (the first
-  working prototype: FalkorDB setup, the first graph tools, scoring, agent
-  workflow, and Streamlit UI), which was later reviewed, redesigned, and
-  extended using the other tools.
+- Gemini: helped develop the initial version of the project (the first working
+  prototype: FalkorDB setup, first graph tools, scoring, agent workflow, and
+  Streamlit UI), which I then reviewed and built on.
+- ChatGPT / coding agent: generated much of the later implementation from the
+  design document and my prompts, including the frontend rebuild and
+  extensions to the backend.
 
 **What I did**
 - Chose the problem, the track, and the overall scope and feature priorities.
 - Specified the requirements and the safety design (dry-run, approval gates,
   rollback, audit chain, decoy scenarios).
-- Reviewed generated code and identified defects to be fixed.
-- Ran the stack locally with Docker, tested the scenarios, and resolved
-  setup and deployment problems.
+- Backend and graph tools (the largest part of my hands-on work): [e.g. wrote
+  and debugged the Cypher queries and graph tools, the scoring logic, the
+  scenario/decoy data, and the action and rollback logic; fixed the cycle
+  time-ordering bug and the FalkorDB path-ordering issue].
+- Frontend (smaller part): [e.g. reviewed the UI, tested the flows, and made
+  some edits to components and layout].
+- Reviewed generated code, found defects, and had them fixed or fixed them
+  myself.
+- Ran the stack locally with Docker, tested the scenarios, and resolved setup
+  and deployment problems.
 - Made the final decisions on what to include, claim, and submit.
 
-All scenario data is synthetic. Evaluation and benchmark numbers in this repo are produced by the included scripts, not written by hand.
+All scenario data is synthetic. Evaluation and benchmark numbers in this repo
+are produced by the included scripts, not written by hand.

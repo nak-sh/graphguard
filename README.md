@@ -163,8 +163,30 @@ The frontend defaults to the `/backend` rewrite in `web/next.config.mjs`; set `N
 
 ## AI-assistant disclosure
 
-**AI assistants used:** _[Owner: confirm and edit this line before submission.]_
+GraphGuard was built with significant AI assistance, directed and reviewed by me.
 
-## Demo script
+**Tools used:** Claude (Anthropic), ChatGPT / an OpenAI coding agent, and Gemini (Google).
 
-See [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) for the 3–5 minute walkthrough. The three strongest judge moments are the rotation-safe ring explanation, the visibly reversible action loop with gateway/audit verification, and the benign decoy/hub cases that the agent leaves alone with reasons.
+**What the AI assistants did**
+- Claude: analysed the hackathon tracks, helped refine the problem statement,
+  drafted the architecture/design document, reviewed code for defects, wrote
+  implementation prompts, helped troubleshoot Docker and environment issues,
+  and helped draft the README and submission text.
+- ChatGPT / coding agent: generated much of the implementation code from the
+  design document and my prompts (backend, agent workflow, graph tools,
+  frontend).
+- Gemini: helped develop the initial version of the project (the first
+  working prototype: FalkorDB setup, the first graph tools, scoring, agent
+  workflow, and Streamlit UI), which was later reviewed, redesigned, and
+  extended using the other tools.
+
+**What I did**
+- Chose the problem, the track, and the overall scope and feature priorities.
+- Specified the requirements and the safety design (dry-run, approval gates,
+  rollback, audit chain, decoy scenarios).
+- Reviewed generated code and identified defects to be fixed.
+- Ran the stack locally with Docker, tested the scenarios, and resolved
+  setup and deployment problems.
+- Made the final decisions on what to include, claim, and submit.
+
+All scenario data is synthetic. Evaluation and benchmark numbers in this repo are produced by the included scripts, not written by hand.

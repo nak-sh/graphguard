@@ -1,5 +1,11 @@
-﻿venv/
+venv/
+.venv/
 __pycache__/
 *.pyc
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .env
+artifacts/*.json
+web/.next/
+web/node_modules/

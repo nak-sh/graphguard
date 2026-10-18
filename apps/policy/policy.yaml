@@ -1,0 +1,38 @@
+# Deterministic GraphGuard policy. Changes are versioned with the policy value.
+version: 2026-10-v1
+thresholds:
+  high: 70
+  review: 40
+signals:
+  TIME_ORDERED_CYCLE:
+    weight: 40
+    description: Time-respecting transfer cycle inside the configured window.
+  SHARED_DEVICE_CLUSTER:
+    weight: 25
+    description: Non-hub device links at least three accounts.
+  RAPID_PASS_THROUGH:
+    weight: 15
+    description: Close-value inbound and outbound transfers occur within a short interval.
+  CONFIRMED_BAD_PROXIMITY:
+    weight: 20
+    description: A directed path reaches a confirmed-bad account within three hops.
+  SHARED_IP_CLUSTER:
+    weight: 10
+    description: Non-hub IP links at least three accounts.
+  PAYROLL_FAN_OUT:
+    weight: -20
+    description: One-to-many outbound fan-out without a return flow.
+  HOUSEHOLD_MITIGATOR:
+    weight: -15
+    description: Exactly two accounts share infrastructure and show small mutual transfers without a cycle.
+  MULE_CHAIN:
+    weight: 15
+    description: A bounded multi-hop pass-through path remains open and does not close a cycle.
+  SYNTHETIC_IDENTITY_CLUSTER:
+    weight: 15
+    description: Non-hub device and IP evidence independently identify the same multi-account synthetic cluster.
+parameters:
+  rapid_window_seconds: 3600
+  rapid_amount_tolerance: 0.10
+  household_max_amount: 500.0
+  confirmed_bad_max_hops: 3

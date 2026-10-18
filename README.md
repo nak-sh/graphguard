@@ -1,153 +1,170 @@
-# GraphGuard: Graph-Augmented Fraud Investigation & Safe Response Agent
+# GraphGuard
 
-> Autonomous, evidence-grounded fraud investigation agent powered by FalkorDB, LangGraph, and deterministic graph analysis. Built for **Graph Hacks: Context for AI Agents (Track 1: Agents That Act on Connected Data)**.
+GraphGuard is a synthetic-data fraud investigation and safe-response workspace for **Graph Hacks: Context for AI Agents, Track 1: Agents That Act on Connected Data**.
 
----
+It investigates suspicious accounts through FalkorDB-backed neighborhoods, shared devices/IPs, directed money paths, and time-respecting transfer cycles. A deterministic scorer and policy engine turn the evidence into a review/hold proposal. The LLM boundary, when configured, may choose the next **read-only** tool and draft language; it is never the source of relationships, scores, permissions, or mutations.
 
-## 1. Project Overview
+> **Synthetic data:** every account, transfer, finding, score, and action in this repository is fictional and deterministic. A graph relationship is a lead, not proof of fraud.
 
-GraphGuard investigates financial fraud concealed across networks of accounts, shared devices, and multi-hop transfers. Instead of relying on an LLM to hallucinate connections or generate unstable Cypher queries, GraphGuard executes parameterized Cypher queries and graph algorithms over FalkorDB to isolate fraud rings and safely execute reversible containment actions.
+## What is verifiably implemented
 
-### The "FalkorDB Removal" Test
-* **Why Graph?** Detecting time-respecting cyclic transfers (`A -> B -> C -> D -> A`) and shared infrastructure across arbitrary hop depths requires slow, resource-heavy recursive CTEs in relational databases.
-* **Core Dependency:** FalkorDB executes multi-hop traversals and circular pattern matching in milliseconds. The application's core logic, deterministic scoring, and validation routing cannot function on relational or vector databases.
+- FalkorDB is the graph source of truth for traversals, cycle detection, infrastructure analysis, incidents, evidence, actions, and audit events.
+- T1–T3 positive scenarios and D1–D4 benign/look-alike scenarios are seeded with a fixed seed, ground-truth labels, and deterministic background noise.
+- Cycle ordering is rotation-invariant: the circular timestamp sequence may contain at most one descent and must fit the configured max-minus-min window. The path is never reverse-unrolled.
+- Evidence is normalized into stable IDs, persisted as `Evidence` nodes, linked to `Incident` nodes, and passed unchanged to the scorer.
+- Dry runs read real account state from FalkorDB and show exact from/to changes without writing.
+- Actions are stored-incident-only, policy-tier checked, approval-gated, idempotent, gateway-visible, verified by graph re-query, and rollbackable with conflict detection.
+- Audit events form a SHA-256 chain. `GET /api/audit/verify` detects tampering; the tamper control is disabled unless `GRAPHGUARD_DEV_CONTROLS=1`.
+- The offline deterministic playbook completes the demo without an LLM key. Anthropic and OpenAI-compatible structured tool selection are optional adapters.
+- `mcp_server/server.py` exposes the same read-only tools and dry-run contract; execution requires an explicit approval token. The MCP SDK is an optional separate process so its major-version transport dependencies cannot silently change the FastAPI stack.
+- The Next.js web app provides the mission-control shell and dedicated routes for investigation, replay, containment, red-team, policy, audit, and benchmark views.
+- `make eval` and `make benchmark` write machine-readable result artifacts; this README does not contain hand-entered latency or accuracy figures.
 
----
-
-## 2. Key Differentiators
-
-* **Deterministic Tooling over Free-form Cypher:** The LangGraph agent coordinates workflow state, but all graph traversals and cycle detections run via parameterized, pre-tested Cypher functions in Python.
-* **Planted Decoys & Restraint:** Demonstrates precision by identifying fraud rings (`A-104`) while intentionally leaving benign look-alikes alone (`D-201`: household device sharing) using counterfactual graph checks.
-* **Closed-Loop Safe Autonomy:** Features a dry-run preview, a policy-gated execution engine, automated post-mutation verification, and an instant graph-native rollback mechanism.
-* **Strict Grounding:** System prompts and Pydantic models enforce that the LLM only reasons over evidence strictly pulled from FalkorDB.
-
----
-
-## 3. Graph Data Model
-
-The graph models money transfers as direct, attributed edges to optimize path traversals and cycle calculations.
+## Architecture
 
 ```text
-(:Alert) -[:ABOUT]-> (:Account) -[:USES_DEVICE]-> (:Device)
-                         |      -[:USED_IP]-> (:IPAddress)
-                         |
-             [:SENT_MONEY {amount, ts}]
-                         |
-                         v
-                    (:Account)
+Next.js mission control ── typed HTTP/SSE ── FastAPI
+                                             │
+                         LangGraph loop ─────┤ read-only tool choice
+                                             │
+                  deterministic scoring/policy/actions
+                                             │
+                 FalkorDB ───── mock payment gateway
+                    │  │  │              │
+          entities / evidence / incidents / audit chain
 ```
 
-### Nodes
-* **`Account`**: `id`, `status` (`ACTIVE`, `UNDER_REVIEW`, `HOLD`), `tier`
-* **`Device`**: `id`, `fingerprint_hash`
-* **`IPAddress`**: `id`, `region`, `is_shared_hub`
-* **`Alert`**: `id`, `priority`, `status`
-* **`AuditEvent`**: `id`, `ts`, `actor`, `action`, `prev_state`, `new_state`, `idempotency_key`
+### Repository layout
 
-### Relationships
-* **`(:Account)-[:USES_DEVICE]->(:Device)`**: Shared device clustering.
-* **`(:Account)-[:USED_IP]->(:IPAddress)`**: Network association.
-* **`(:Account)-[:SENT_MONEY {amount, ts}]->(:Account)`**: Directed, timestamped fund transfers.
-* **`(:AuditEvent)-[:TARGETED]->(:Account)`**: Action history for instantaneous rollback.
+```text
+apps/graph_tools/       strict contracts and the only FalkorDB read boundary
+apps/policy/            versioned YAML policy and evidence-only scorer
+apps/agent/             LangGraph loop, provider adapter, fallback, grounding
+apps/actions/           dry-run, policy gate hooks, gateway, audit, rollback
+apps/signature/         containment optimizer, replay, red-team matrix
+apps/api/               FastAPI routes and SSE stream
+mock_gateway/           idempotent FastAPI mock gateway plus in-process contract
+evaluation/             scenario/evidence/grounding/action harness
+benchmark/              FalkorDB versus SQLite recursive-CTE measurements
+web/                    Next.js App Router frontend
+```
 
----
+## Why a graph, honestly
 
-## 4. Key Cypher Queries
+GraphGuard needs directed multi-hop paths, typed infrastructure relationships, and circular transfer checks over a connected network. The repository also includes a SQLite recursive-CTE comparator because a graph claim should be measured rather than assumed. Run:
 
-### A. Time-Respecting Circular Flow Detection (3 to 6 Hops)
+```bash
+make benchmark
+```
+
+The command writes `artifacts/benchmark.json`, including the seed, graph sizes, depths, warm-ups, iteration count, p50 and p95 for both engines, and methodology. Results can be competitive for SQL at small sizes; GraphGuard does not promise a win before measuring.
+
+The exact FalkorDB forms used by the implementation are recorded in [`docs/VERIFIED_SYNTAX.md`](docs/VERIFIED_SYNTAX.md). The pinned image is `falkordb/falkordb:v4.22.1`.
+
+## Graph data model
+
+```text
+(:Alert)-[:ABOUT]->(:Account)
+(:Account)-[:USES_DEVICE]->(:Device)
+(:Account)-[:USED_IP]->(:IPAddress)
+(:Account)-[:SENT_MONEY {id, amount, ts}]->(:Account)
+(:Incident)-[:SUPPORTED_BY]->(:Evidence)-[:REFERENCES]->(:Account|:Device|:IPAddress)
+(:Incident)-[:HAS_ACTION]->(:AuditEvent)-[:TARGETED]->(:Account)
+```
+
+Transfers are edges, not transaction nodes, so the exact directed path remains easy to inspect and audit. Device/IP nodes carry explicit hub metadata. Account fixtures include synthetic monthly volume and legitimate-activity estimates for the containment trade-off view.
+
+## Key queries actually used
+
+The core tools use parameterized IDs and validated integer bounds. Cycle and path tools use explicit bounded relationship aliases because the M0 spike found that variable-length path projections were not ordered reliably on the observed client/module combination.
+
 ```cypher
-MATCH p = (a:Account {id: $entity_id})-[:SENT_MONEY*3..6]->(a)
-RETURN [n IN nodes(p) | n.id] AS cycle_nodes,
-       [r IN relationships(p) | r.amount] AS amounts,
-       [r IN relationships(p) | r.ts] AS timestamps
+MATCH (n0:Account {id: $entity_id})
+      -[r0:SENT_MONEY]->(n1:Account)
+      -[r1:SENT_MONEY]->(n2:Account)
+      -[r2:SENT_MONEY]->(n0)
+RETURN [n0, n1, n2] AS cycle_nodes,
+       [r0, r1, r2] AS cycle_relationships
+LIMIT $limit
 ```
-*Identifies money-laundering loops where funds circulate back to the origin.*
 
-### B. Shared Infrastructure (Non-Hub Devices)
-```cypher
-MATCH (a:Account {id: $entity_id})-[:USES_DEVICE]->(d:Device)<-[:USES_DEVICE]-(other:Account)
-WHERE other.id <> a.id
-RETURN d.id AS device_id, collect(DISTINCT other.id) AS connected_accounts
+Shared infrastructure, neighborhood, and money-path projections are visible in `apps/graph_tools/tools.py`; every input is bounded or allowlisted before query construction.
+
+## Scenarios and evaluation
+
+| Scenario | Expected disposition | Purpose |
+|---|---|---|
+| T1 | AUTO_HOLD | Five-account time-ordered ring with non-hub shared device |
+| T2 | MANUAL_REVIEW | Directed mule chain reaching a synthetic confirmed-bad anchor |
+| T3 | MANUAL_REVIEW | Synthetic identity cluster with shared device and IP |
+| D1 | NO_ACTION | Two-account household/shared device with small mutual transfers |
+| D2 | NO_ACTION | Payroll-style one-to-many fan-out without return flow |
+| D3 | NO_ACTION | Shared office IP/device hub with approximately forty accounts |
+| D4 | NO_ACTION | Out-of-order coincidental loop |
+
+Run the real harness:
+
+```bash
+make eval
 ```
-*Detects account clusters operating from the same hardware while pruning high-degree hubs.*
 
-### C. State Mutation & Audit Trail
-```cypher
-MATCH (a:Account {id: $entity_id})
-SET a.status = $new_status
-CREATE (ev:AuditEvent { id: $audit_id, action: $action_type, prev_state: $prev_status })
-CREATE (ev)-[:TARGETED]->(a)
+The generated [`artifacts/eval.json`](artifacts/eval.json) reports each disposition, signal rules, evidence traceability, grounding violations, false escalations, idempotency, and rollback-fidelity checks. A clean run requires zero decoy escalations and zero grounding violations.
+
+## Setup
+
+Prerequisites: Docker Compose, Python 3.11+, and Node.js 20+ for local frontend development.
+
+```bash
+cp .env.example .env
+python -m venv .venv
+# Windows: .venv\\Scripts\\activate
+# Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+
+docker compose up --build -d
 ```
-*Safely updates account statuses while maintaining a cryptographic chain of custody for rollbacks.*
 
----
+The Compose `seed` service waits for FalkorDB and loads the deterministic graph before the API starts. Open the frontend at `http://localhost:3000`. The FastAPI health endpoint is `http://localhost:8000/health`; the FalkorDB Browser is mapped to `http://localhost:3002`.
 
-## 5. Performance Benchmark: Graph vs. SQL
+Useful checks:
 
-To prove the necessity of a graph database, a benchmark ([benchmark/run.py](benchmark/run.py)) measures the latency of the multi-hop cycle query finding 5-hop loops in our dataset:
+```bash
+make test
+make syntax
+make eval
+make benchmark
+make demo
+```
 
-* **FalkorDB (Graph Native):** ~1–2 ms (p50: 1.03 ms, p95: 1.58 ms)
-* **Relational Equivalent:** Traversing 3 to 6 hops tracking origin, amounts, and path constraints using recursive SQL CTEs typically degrades to >1000 ms or triggers out-of-memory limits at scale, blocking real-time autonomous agent workflows.
+The Python app can also run locally with:
 
----
+```bash
+uvicorn apps.api.main:app --reload
+cd web && npm install && npm run dev
+```
 
-## 6. Project Architecture
+The frontend defaults to the `/backend` rewrite in `web/next.config.mjs`; set `NEXT_PUBLIC_API_BASE_URL` when serving it behind a different proxy.
 
-* **`apps/graph_tools/`**: Pydantic schemas and deterministic parameterized Cypher execution functions.
-* **`apps/policy/`**: Hard-coded risk scoring engine (Cycle: `+40`, Device Cluster: `+25`, Decoy Mitigator: `-15`).
-* **`apps/agent/`**: LangGraph state machine orchestrating the investigation path and generating dry-run JSON diffs.
-* **`apps/actions/`**: Execution loop for safe graph mutations and rollback handling.
-* **`apps/api/`**: FastAPI endpoints serving the agent and action backend.
-* **`apps/web/`**: Streamlit interface to manage alerts, approve actions, and execute rollbacks.
+## Signature features
 
----
+- **Containment optimizer:** greedy weighted hitting set over detected cycles plus NetworkX min-cut over the FalkorDB-fetched path subgraph; compares hold-all, optimizer pick, and flag-only with synthetic collateral estimates.
+- **Time-travel replay:** returns edges sorted by timestamp with cumulative volume and a cycle-close frame for the timeline scrubber.
+- **Red-team lab:** shows baseline and evasion variants honestly, including misses and the policy knob that could address each one. Scratch-graph execution is isolated from the demo graph.
+- **Tamper-evident audit:** SHA-256 event chaining, verification endpoint, and a disabled-by-default dev tamper control.
 
-## 7. Quickstart / Local Setup
+## Safety and limitations
 
-### Prerequisites
-* Docker & Docker Compose
-* Python 3.11+
-* Git
+- No real customer data, bank integration, money movement, account freeze, or definitive fraud adjudication is present.
+- The mock gateway changes only synthetic graph state. It is not a payment processor.
+- The LLM is optional and non-authoritative. Provider failure falls back to the deterministic read-only playbook.
+- Collateral volume and legitimate-activity values are synthetic estimates, not operational risk measurements.
+- The benchmark measures local client round trips and is not a production capacity guarantee.
+- The current web graph canvas has a bounded demo view; larger neighborhoods must remain capped/summarized by the backend.
 
-### Step-by-Step Instructions
+## AI-assistant disclosure
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/nak-sh/graphguard.git
-   cd graphguard
-   ```
+**AI assistants used:** _[Owner: confirm and edit this line before submission.]_
 
-2. **Start FalkorDB:**
-   ```bash
-   docker compose up -d
-   ```
-   *FalkorDB Browser is accessible at [http://localhost:3000](http://localhost:3000).*
+## Demo script
 
-3. **Set up Python environment:**
-   ```bash
-   python -m venv venv
-   # Windows:
-   .\venv\Scripts\activate
-   # Linux/macOS:
-   source venv/bin/activate
-
-   pip install -r requirements.txt
-   ```
-
-4. **Seed the graph & run benchmarks:**
-   ```bash
-   python data/generate_demo.py
-   python benchmark/run.py
-   ```
-
-5. **Start the Application Stack (Run in two separate terminals):**
-
-   **Terminal 1 (Backend API):**
-   ```bash
-   uvicorn apps.api.main:app --reload
-   ```
-
-   **Terminal 2 (Frontend UI):**
-   ```bash
-   streamlit run apps/web/app.py
-   ```
+See [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) for the 3–5 minute walkthrough. The three strongest judge moments are the rotation-safe ring explanation, the visibly reversible action loop with gateway/audit verification, and the benign decoy/hub cases that the agent leaves alone with reasons.

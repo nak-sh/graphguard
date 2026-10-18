@@ -1,0 +1,41 @@
+name: GraphGuard checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+      - name: Start pinned FalkorDB
+        run: docker compose up -d falkordb
+      - name: Wait for FalkorDB
+        run: |
+          python - <<'PY'
+          import socket, time
+          for _ in range(60):
+              sock = socket.socket(); sock.settimeout(1)
+              ok = sock.connect_ex(("127.0.0.1", 6379)) == 0
+              sock.close()
+              if ok: break
+              time.sleep(1)
+          else:
+              raise SystemExit("FalkorDB did not become reachable")
+          PY
+      - name: Seed deterministic graph
+        run: python data/generate_demo.py
+      - name: Run Python suite
+        run: python -m pytest -q
+      - name: Build web
+        working-directory: web
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build

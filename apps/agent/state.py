@@ -14,4 +14,14 @@ class InvestigationState(TypedDict):
     dry_run_diff: Optional[Dict[str, Any]]
     approval_status: str  # "NOT_REQUIRED", "PENDING", "APPROVED"
     audit_events: List[Dict[str, Any]]
+    policy_version: str
+    autonomy_mode: str
+    next_tool: Optional[str]
+    tool_calls: int
+    incident_id: Optional[str]
+    narrative: str
+    grounding: Dict[str, Any]
+    progress: List[Dict[str, Any]]
+    error: Optional[str]
+    pause_for_approval: bool
     

@@ -1,9 +1,78 @@
-# docker-compose.yml
 services:
   falkordb:
-    image: falkordb/falkordb:latest
+    image: falkordb/falkordb:v4.22.1
     container_name: graphguard-db
     ports:
       - "6379:6379"
+      - "3002:3000"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "PING"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - graphguard-falkordb:/data
+
+  mock-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: graphguard-mock-gateway
+    command: ["uvicorn", "mock_gateway.app:app", "--host", "0.0.0.0", "--port", "8010"]
+    ports:
+      - "8010:8010"
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: graphguard-seed
+    environment:
+      GRAPHGUARD_DB_HOST: falkordb
+      GRAPHGUARD_DB_PORT: "6379"
+      GRAPHGUARD_GRAPH_NAME: graphguard
+      GRAPHGUARD_RESET_GRAPH: "1"
+    depends_on:
+      falkordb:
+        condition: service_healthy
+    command: ["python", "data/generate_demo.py"]
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: graphguard-api
+    environment:
+      GRAPHGUARD_DB_HOST: falkordb
+      GRAPHGUARD_DB_PORT: "6379"
+      GRAPHGUARD_GRAPH_NAME: graphguard
+      GRAPHGUARD_AUTONOMY_MODE: APPROVE
+      GRAPHGUARD_DEV_CONTROLS: "0"
+    depends_on:
+      falkordb:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+      mock-gateway:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  web:
+    build:
+      context: ./web
+    container_name: graphguard-web
+    environment:
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+      GRAPHGUARD_API_URL: http://api:8000
+      NEXT_PUBLIC_API_BASE_URL: /backend
+    depends_on:
+      - api
+    ports:
       - "3000:3000"
-    restart: unless-stopped
+
+volumes:
+  graphguard-falkordb:

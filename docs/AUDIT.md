@@ -6,7 +6,7 @@
 
 ## Executive summary
 
-The supplied repository is a small v1-style FastAPI/LangGraph/FalkorDB prototype with a Streamlit screen. It has a useful starting boundary between graph tools, scoring, workflow, actions, API, and UI, but it does not yet satisfy the v2 contract. The largest gaps are reproducibility, evidence/provenance, safe server-enforced actions, the real agent loop, scenario breadth, benchmark honesty, and the complete web product.
+The supplied repository is a small v1-style FastAPI/LangGraph/FalkorDB prototype with a minimal legacy screen. It has a useful starting boundary between graph tools, scoring, workflow, actions, API, and UI, but it does not yet satisfy the v2 contract. The largest gaps are reproducibility, evidence/provenance, safe server-enforced actions, the real agent loop, scenario breadth, benchmark honesty, and the complete web product.
 
 FalkorDB is already the only graph store used by the core prototype. The v2 implementation must preserve and strengthen that property: traversals, cycle detection, shared-infrastructure analysis, incidents, evidence, audit events, and action verification must remain graph-backed. No relational or in-memory substitute may become the source of truth.
 
@@ -24,7 +24,7 @@ apps/
   graph_tools/models.py
   graph_tools/tools.py
   policy/scorer.py
-  web/app.py                 # Streamlit
+  web/                       # legacy UI boundary (replaced by /web)
 benchmark/run.py
 data/generate_demo.py
   test_cypher_spike.py
@@ -96,10 +96,10 @@ Missing from the target layout are `mock_gateway`, `mcp_server`, a versioned pol
 
 | Area | Current state | v2 requirement | Gap |
 |---|---|---|---|
-| Frontend | 80-line Streamlit page with two hard-coded entities. | Next.js interactive security-operations workspace. | Entire replacement missing. |
+| Frontend | Minimal legacy page with two hard-coded entities. | Next.js interactive security-operations workspace. | Entire replacement missing. |
 | Signature features | None beyond basic dry-run/rollback attempt. | B1–B4 required; B5–B8 expected after Tier 1; B9–B11 after M8. | Missing optimizer, replay, red-team, tamper chain, sandbox, autonomy dial, explorer, copilot and demo mode. |
 | Compose | Starts only `falkordb/falkordb:latest`. | One command starts pinned FalkorDB, API, web, mock gateway. | Missing services, health checks, volumes and readiness. |
-| Dependencies | Lower bounds only; `streamlit` and `requests` are missing despite imports. | Pinned reproducible dependencies and frontend lockfile. | Setup defect present. |
+| Dependencies | Lower bounds only; an imported HTTP/UI dependency was missing. | Pinned reproducible dependencies and frontend lockfile. | Setup defect present. |
 | Tests | All tests assume a pre-seeded live database and mutate shared state. | Unit, integration, API, frontend smoke and Docker Compose CI. | Fixtures, conftest, isolation, Playwright and CI missing. |
 | Documentation | README only and contains unsupported claims. | README generated from result artifacts plus `VERIFIED_SYNTAX.md`, decisions, audit and demo script. | Documentation overhaul required. |
 

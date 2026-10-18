@@ -9,3 +9,18 @@ __pycache__/
 artifacts/*.json
 web/.next/
 web/node_modules/
+# Frontend build output
+web/.next/
+web/node_modules/
+
+# Environment secrets
+.env.*
+!.env.example
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local virtual environments
+.venv/
+venv/

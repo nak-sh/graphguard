@@ -171,8 +171,7 @@ reviewed by me.
 **What the AI assistants did**
 - Claude: analysed the hackathon tracks, helped refine the problem statement,
   drafted the architecture/design document, reviewed code for defects, wrote
-  implementation prompts, helped troubleshoot Docker and environment issues,
-  and helped draft the README and submission text.
+  implementation prompts, helped troubleshoot Docker and environment issues.
 - Gemini: helped develop the initial version of the project (the first working
   prototype: FalkorDB setup, first graph tools, scoring, agent workflow, and
   Streamlit UI), which I then reviewed and built on.
